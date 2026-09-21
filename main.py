@@ -1,6 +1,11 @@
-"""Consola para probar las reglas con dos jugadores humanos."""
+"""Modos de juego por consola."""
 
-from hoppers import actions, initial_state, player, result, terminal, winner
+import argparse
+
+from agent import SearchStats, choose_action
+from game import Game
+
+from hoppers import actions, initial_state, player
 
 
 def show_board(state):
@@ -19,17 +24,23 @@ def parse_action(text):
     return ((r, c), (nr, nc))
 
 
-def main():
-    state = initial_state()
-    print("Hoppers — partida entre dos personas")
+def main(mode="humano-humano", depth=3, seconds=2.0, human=1, max_turns=600):
+    game = Game(initial_state(), max_turns=max_turns)
+    print(f"Hoppers — {mode}")
     print("Escribe origen y destino, por ejemplo: 0 3 0 5.")
     print("Comandos: ayuda (jugadas disponibles), salir (cerrar la partida).")
-    while not terminal(state):
+    while game.outcome() is None:
+        state = game.state
         show_board(state)
         legal = actions(state)
-        if not legal:
-            print("No hay jugadas disponibles. Se detiene la sesión sin declarar ganador.")
-            return
+        agent_turn = mode == "agente-agente" or (mode == "humano-agente" and state.turn != human)
+        if agent_turn:
+            stats = SearchStats()
+            action = choose_action(state, depth, seconds, stats=stats, history=game.history)
+            game.play(action)
+            print(f"Agente {state.turn}: {action} | profundidad {stats.depth} | "
+                  f"{stats.nodes} nodos | {stats.elapsed:.3f} s")
+            continue
         try:
             text = input(f"\nTurno del jugador {player(state)}: ").strip().lower()
         except (EOFError, KeyboardInterrupt):
@@ -44,12 +55,22 @@ def main():
             continue
         try:
             # El motor valida también los saltos múltiples; la consola solo lee datos.
-            state = result(state, parse_action(text))
+            game.play(parse_action(text))
         except ValueError as error:
             print(error)
-    show_board(state)
-    print(f"\nGanó el jugador {winner(state)}.")
+    show_board(game.state)
+    print(f"\n{game.outcome()}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Jugar Hoppers por consola")
+    parser.add_argument("--mode", choices=["humano-humano", "humano-agente", "agente-agente"],
+                        default="humano-agente")
+    parser.add_argument("--depth", type=int, default=3)
+    parser.add_argument("--seconds", type=float, default=2)
+    parser.add_argument("--human", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--max-turns", type=int, default=600)
+    options = parser.parse_args()
+    if options.depth < 1 or not 0 < options.seconds <= 30 or options.max_turns < 1:
+        parser.error("Usa profundidad y turnos positivos, y un tiempo entre 0 y 30 (sin incluir 0).")
+    main(options.mode, options.depth, options.seconds, options.human, options.max_turns)

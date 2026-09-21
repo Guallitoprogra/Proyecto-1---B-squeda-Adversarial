@@ -6,8 +6,8 @@ por jugada.
 
 ## Avance actual
 
-La primera parte contiene el motor del juego y una consola para dos personas.
-Todavía no incluye un agente inteligente.
+El proyecto incluye el motor del juego, un agente Minimax con poda alfa-beta,
+consola y una ventana para jugar con el mouse. El informe está en `INFORME.md`.
 
 El trabajo está dividido en cuatro avances:
 
@@ -15,8 +15,8 @@ El trabajo está dividido en cuatro avances:
 | --- | --- | --- |
 | 1 | Agregar reglas y movimientos de Hoppers | Estado, movimientos, saltos, victoria y pruebas |
 | 1 | Agregar consola y guía del juego | Partida manual e instrucciones |
-| 2 (pendiente) | Agregar agente Minimax | Poda alfa-beta, heurística, profundidad y control del tiempo |
-| 2 (pendiente) | Agregar modos de juego e informe | Humano contra agente, agente contra agente y resultados |
+| 2 | Agregar agente Minimax | Poda alfa-beta, heurística, profundidad y control del tiempo |
+| 2 | Agregar modos de juego e informe | Humano contra agente, agente contra agente y resultados |
 
 ## Ejecutar
 
@@ -24,7 +24,22 @@ Se necesita Python 3.10 o posterior. No hay paquetes externos que instalar.
 Desde la carpeta del proyecto:
 
 ```bash
-python main.py
+python gui.py
+```
+
+En la ventana, selecciona una ficha y después un destino verde. Puedes elegir
+humano contra agente, agente contra agente o humano contra humano. La profundidad,
+el tiempo y tu jugador se aplican al pulsar **Nueva partida**. El valor inicial es
+profundidad 3 y 2 segundos por decisión. El tiempo configurable no puede superar 30.
+Tkinter viene con la instalación habitual de Python para Windows; en Linux puede
+requerir el paquete `python3-tk` del sistema.
+
+También puedes jugar por consola:
+
+```bash
+python main.py --mode humano-agente --depth 3 --seconds 2 --human 1
+python main.py --mode agente-agente --depth 2 --seconds 1
+python main.py --mode humano-humano
 ```
 
 Se escribe una jugada con cuatro números: fila y columna de origen, seguidas
@@ -57,17 +72,25 @@ python -m unittest discover -s tests -v
 El material incluye una regla opcional contra el bloqueo de un campamento con
 fichas propias. Esta versión usa la condición normal de victoria y no activa esa
 variante. Tampoco añade restricciones para salir del campamento de destino.
-No se define un empate automático por repetición; dos personas pueden repetir
-movimientos. `salir` interrumpe la sesión, no cuenta como victoria ni empate.
+Para cerrar partidas que no progresan, la sesión declara tablas en la tercera
+repetición del mismo tablero y turno, al llegar a 600 jugadas individuales o si
+no hay acciones legales. Estas son convenciones de la aplicación, adicionales
+al material del curso; no cambian las reglas de movimiento ni `terminal(state)`,
+que identifica victorias. El historial de la sesión permite al agente reconocer
+una tercera repetición durante la búsqueda. `salir` solo interrumpe la sesión.
 
 ## Organización del código
 
 - `hoppers.py`: funciones del juego, sin entrada por teclado ni lógica de agentes.
 - `main.py`: visualización del tablero y lectura de jugadas.
-- `tests/test_hoppers.py`: pruebas de las reglas.
+- `agent.py`: evaluación, Minimax, poda y manejo del tiempo.
+- `game.py`: turnos, historial y cierre de una sesión.
+- `gui.py`: ventana con tablero interactivo.
+- `comprobar_partida.py`: partida automática con un resumen de tiempos.
+- `tests/`: pruebas de reglas, agente, consola y cierre de partidas.
 
 `State` guarda un tablero de tuplas y el jugador en turno. Las tuplas evitan
-modificaciones accidentales cuando el futuro agente explore distintas jugadas.
+modificaciones accidentales cuando el agente explora distintas jugadas.
 
 | Función | Responsabilidad |
 | --- | --- |
@@ -94,10 +117,32 @@ no hay capturas. Los destinos intermedios también se incluyen como opciones.
    evita ciclos y trabajo repetido. La casilla de origen se considera vacía
    al comprobar las fichas que sirven de apoyo.
 4. `result` copia el tablero antes de mover. Así una rama de búsqueda no
-   modifica las demás cuando se implemente Minimax.
-5. La utilidad usa siempre la perspectiva de P1. En la segunda parte habrá que
-   mantener esa convención en los turnos maximizadores y minimizadores.
+   modifica las demás dentro de Minimax. La búsqueda usa `apply_action` para
+   acciones que ya obtuvo de `actions`, evitando validarlas de nuevo en cada nodo.
+5. La utilidad usa siempre la perspectiva de P1. Minimax mantiene esa convención:
+   P1 maximiza y P2 minimiza.
 
 Las pruebas cubren el tablero inicial, bordes, pasos, saltos diagonales,
 cadenas que cambian de dirección, ciclos, jugadas inválidas, cambio de turno,
 conservación del estado anterior y las condiciones de victoria.
+
+## Usar el agente desde otro programa
+
+```python
+from agent import choose_action
+from hoppers import initial_state, result
+
+state = initial_state()
+move = choose_action(state, depth=3, time_limit=2)
+state = result(state, move)
+```
+
+`choose_action` devuelve una acción legal en estados válidos con movimientos
+disponibles. Devuelve `None` en estados terminales o sin movimientos. El evaluador
+supone las 15 fichas de cada jugador, que se conservan durante una partida legal.
+
+Para comprobar una partida completa sin imprimir todos los tableros:
+
+```bash
+python comprobar_partida.py --depth 1 --seconds 0.15
+```

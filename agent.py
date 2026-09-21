@@ -152,6 +152,8 @@ def choose_action(state, depth=3, time_limit=2.0, *, stats=None, history=None, c
                 child_value = search(child, remaining - 1, alpha, beta)
             finally:
                 repetitions[child] -= 1
+                if repetitions[child] == 0:
+                    del repetitions[child]
             if node.turn == P1:
                 value = max(value, child_value)
                 alpha = max(alpha, value)
@@ -177,6 +179,8 @@ def choose_action(state, depth=3, time_limit=2.0, *, stats=None, history=None, c
                     score = search(child, current_depth - 1, alpha, beta)
                 finally:
                     repetitions[child] -= 1
+                    if repetitions[child] == 0:
+                        del repetitions[child]
                 better = score > value if state.turn == P1 else score < value
                 if better:
                     value, iteration_best = score, action
