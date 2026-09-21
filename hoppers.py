@@ -88,6 +88,11 @@ def actions(state):
 def result(state, action):
     if action not in actions(state):
         raise ValueError("La jugada no es legal para el jugador en turno.")
+    return apply_action(state, action)
+
+
+def apply_action(state, action):
+    """Aplicar una acción ya obtenida de actions; uso interno de la búsqueda."""
     (r, c), (nr, nc) = action
     # Copiamos las filas para que explorar una jugada no cambie el estado padre.
     board = [list(row) for row in state.board]
