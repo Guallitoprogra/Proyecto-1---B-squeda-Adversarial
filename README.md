@@ -27,7 +27,7 @@ Desde la carpeta del proyecto:
 python gui.py
 ```
 
-En la ventana, selecciona una ficha y después un destino verde. Puedes elegir
+En la ventana, selecciona una ficha y después un destino dorado. Puedes elegir
 humano contra agente, agente contra agente o humano contra humano. La profundidad,
 el tiempo y tu jugador se aplican al pulsar **Nueva partida**. El valor inicial es
 profundidad 3 y 2 segundos por decisión. El tiempo configurable no puede superar 30.

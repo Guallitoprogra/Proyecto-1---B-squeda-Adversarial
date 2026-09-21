@@ -10,16 +10,22 @@ from game import Game
 from hoppers import CAMP_P1, CAMP_P2, actions
 
 
-CELL = 52
-MARGIN = 30
+CELL = 46
+MARGIN = 28
+BG = "#10191b"
+PANEL = "#1a282b"
+TEXT = "#edf5ee"
+MUTED = "#a4b8b2"
+MINT = "#8cdeb0"
+CORAL = "#f4a28e"
 MODES = ("Humano contra agente", "Agente contra agente", "Humano contra humano")
 
 
 class HoppersApp:
     def __init__(self, root):
         self.root = root
-        root.title("Hoppers | Búsqueda adversarial")
-        root.configure(bg="#f4f2ec")
+        root.title("Hoppers | Juego de estrategia")
+        root.configure(bg=BG)
         root.resizable(False, False)
         self.game = Game()
         self.selected = None
@@ -33,35 +39,86 @@ class HoppersApp:
         self.seconds = tk.StringVar(value="2")
         self.human = tk.StringVar(value="1")
         self.status = tk.StringVar()
-        self.detail = tk.StringVar(value="Selecciona una ficha azul y luego un destino marcado.")
+        self.detail = tk.StringVar(value="Selecciona una ficha menta y luego un destino marcado.")
         self.summary = tk.StringVar(value="Todavía no hay jugadas del agente.")
         self.active_settings = (MODES[0], 3, 2.0, 1)
 
-        tk.Label(root, text="HOPPERS", font=("Segoe UI", 25, "bold"),
-                 bg="#f4f2ec", fg="#183447").pack(anchor="w", padx=25, pady=(16, 0))
-        tk.Label(root, text="Lleva tus 15 fichas al campamento contrario",
-                 font=("Segoe UI", 11), bg="#f4f2ec", fg="#52616b").pack(anchor="w", padx=26)
-        controls = ttk.Frame(root, padding=(22, 12))
-        controls.pack(fill="x")
-        ttk.Combobox(controls, textvariable=self.mode, values=MODES, state="readonly", width=25).grid(row=0, column=0, columnspan=2, padx=4)
-        ttk.Label(controls, text="Profundidad").grid(row=1, column=0, pady=(10, 0))
-        ttk.Spinbox(controls, from_=1, to=20, textvariable=self.depth, width=5).grid(row=1, column=1, pady=(10, 0))
-        ttk.Label(controls, text="Segundos").grid(row=1, column=2, padx=6, pady=(10, 0))
-        ttk.Spinbox(controls, from_=0.1, to=30, increment=0.5, textvariable=self.seconds, width=5).grid(row=1, column=3, pady=(10, 0))
-        ttk.Label(controls, text="Tu jugador").grid(row=0, column=2, padx=6)
-        ttk.Combobox(controls, textvariable=self.human, values=("1", "2"), state="readonly", width=3).grid(row=0, column=3)
-        ttk.Button(controls, text="Nueva partida", command=self.new_game).grid(row=0, column=4, padx=(16, 0))
-        ttk.Label(controls, text="Los ajustes se aplican con Nueva partida.").grid(row=2, column=0, columnspan=5, sticky="w", padx=4, pady=(8, 0))
+        style = ttk.Style(root)
+        style.theme_use("clam")
+        style.configure("TCombobox", fieldbackground=PANEL, background="#304448",
+                        foreground=TEXT, arrowcolor=MINT, bordercolor="#405653", padding=6)
+        style.map("TCombobox", fieldbackground=[("readonly", PANEL)],
+                  foreground=[("readonly", TEXT)], selectbackground=[("readonly", PANEL)],
+                  selectforeground=[("readonly", TEXT)])
+        style.configure("TSpinbox", fieldbackground=PANEL, background="#304448",
+                        foreground=TEXT, arrowcolor=MINT, bordercolor="#405653", padding=6)
+        root.option_add("*TCombobox*Listbox.background", PANEL)
+        root.option_add("*TCombobox*Listbox.foreground", TEXT)
+        root.option_add("*TCombobox*Listbox.selectBackground", "#355849")
 
-        self.canvas = tk.Canvas(root, width=580, height=565, bg="#f4f2ec", highlightthickness=0)
-        self.canvas.pack(padx=15)
+        header = tk.Frame(root, bg=BG)
+        header.pack(fill="x", padx=26, pady=(20, 18))
+        tk.Label(header, text="HOPPERS", font=("Segoe UI", 28, "bold"),
+                 bg=BG, fg=TEXT).pack(side="left")
+        tk.Label(header, text="ESTRATEGIA / 01", font=("Segoe UI", 10, "bold"),
+                 bg=BG, fg=MINT).pack(side="right")
+        content = tk.Frame(root, bg=BG)
+        content.pack(padx=24, pady=(0, 24), fill="both")
+        board_panel = tk.Frame(content, bg=PANEL, padx=12, pady=12)
+        board_panel.pack(side="left", anchor="n")
+        legend = tk.Frame(board_panel, bg=PANEL)
+        legend.pack(fill="x", padx=16, pady=(2, 8))
+        tk.Label(legend, text="●  JUGADOR 1", fg=MINT, bg=PANEL,
+                 font=("Segoe UI", 10, "bold")).pack(side="left")
+        tk.Label(legend, text="JUGADOR 2  ●", fg=CORAL, bg=PANEL,
+                 font=("Segoe UI", 10, "bold")).pack(side="right")
+        self.canvas = tk.Canvas(board_panel, width=516, height=516,
+                                bg=PANEL, highlightthickness=0, cursor="hand2")
+        self.canvas.pack()
         self.canvas.bind("<Button-1>", self.on_click)
-        tk.Label(root, textvariable=self.status, bg="#f4f2ec", fg="#183447",
-                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=27)
-        tk.Label(root, textvariable=self.detail, bg="#f4f2ec", fg="#52616b",
-                 wraplength=550, justify="left").pack(anchor="w", padx=27, pady=4)
-        tk.Label(root, textvariable=self.summary, bg="#f4f2ec", fg="#52616b",
-                 wraplength=550, justify="left").pack(anchor="w", padx=27, pady=(0, 18))
+        tk.Label(board_panel, text="15 fichas · 2 campamentos · una estrategia",
+                 bg=PANEL, fg=MUTED, font=("Segoe UI", 10)).pack(pady=(5, 4))
+
+        sidebar = tk.Frame(content, bg=BG, width=290)
+        sidebar.pack(side="left", fill="y", padx=(22, 0))
+        tk.Label(sidebar, text="Tu próxima jugada", font=("Segoe UI", 18, "bold"),
+                 fg=TEXT, bg=BG).pack(anchor="w")
+        tk.Label(sidebar, text="Cruza el tablero y ocupa el\ncampamento contrario.",
+                 fg=MUTED, bg=BG, justify="left", font=("Segoe UI", 10)).pack(anchor="w", pady=(4, 16))
+        controls = tk.Frame(sidebar, bg=PANEL, padx=16, pady=14)
+        controls.pack(fill="x")
+
+        def caption(text):
+            tk.Label(controls, text=text, bg=PANEL, fg=MUTED,
+                     font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(8, 5))
+
+        caption("MODO DE JUEGO")
+        ttk.Combobox(controls, textvariable=self.mode, values=MODES,
+                     state="readonly", width=25).pack(fill="x")
+        settings = tk.Frame(controls, bg=PANEL)
+        settings.pack(fill="x", pady=(14, 0))
+        for column, (label, variable) in enumerate((("Profundidad", self.depth), ("Segundos", self.seconds))):
+            tk.Label(settings, text=label, bg=PANEL, fg=MUTED).grid(row=0, column=column, sticky="w", padx=(0, 14))
+            ttk.Spinbox(settings, from_=1 if column == 0 else 0.1,
+                        to=20 if column == 0 else 30, increment=1 if column == 0 else 0.5,
+                        textvariable=variable, width=8).grid(row=1, column=column, sticky="w", pady=5, padx=(0, 14))
+        caption("TU JUGADOR")
+        ttk.Combobox(controls, textvariable=self.human, values=("1", "2"),
+                     state="readonly", width=5).pack(fill="x")
+        tk.Button(controls, text="Nueva partida  →", command=self.new_game,
+                  bg=MINT, fg=BG, activebackground="#b1edc9", activeforeground=BG,
+                  relief="flat", bd=0, cursor="hand2", font=("Segoe UI", 11, "bold"),
+                  pady=10).pack(fill="x", pady=(18, 8))
+        tk.Label(controls, text="Aplica los ajustes al iniciar otra partida.",
+                 bg=PANEL, fg=MUTED, font=("Segoe UI", 9), wraplength=265,
+                 justify="left").pack(anchor="w")
+        tk.Label(sidebar, textvariable=self.status, bg=BG, fg=MINT,
+                 font=("Segoe UI", 12, "bold"), wraplength=290,
+                 justify="left").pack(anchor="w", pady=(18, 6))
+        tk.Label(sidebar, textvariable=self.detail, bg=BG, fg=TEXT,
+                 wraplength=290, justify="left").pack(anchor="w", pady=(0, 12))
+        tk.Label(sidebar, textvariable=self.summary, bg=BG, fg=MUTED,
+                 wraplength=290, justify="left").pack(anchor="w")
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.draw()
         self.root.after(50, self.poll)
@@ -95,24 +152,29 @@ class HoppersApp:
         destinations = {end for start, end in actions(self.game.state) if start == self.selected}
         for i in range(10):
             center = MARGIN + i * CELL + CELL / 2
-            self.canvas.create_text(center, 14, text=str(i), fill="#52616b")
-            self.canvas.create_text(14, center, text=str(i), fill="#52616b")
+            self.canvas.create_text(center, 14, text=str(i), fill=MUTED)
+            self.canvas.create_text(14, center, text=str(i), fill=MUTED)
         for r, row in enumerate(self.game.state.board):
             for c, piece in enumerate(row):
                 cell = (r, c)
                 x, y = MARGIN + c * CELL, MARGIN + r * CELL
-                color = "#e1ecf1" if cell in CAMP_P1 else "#f6e4cd" if cell in CAMP_P2 else "#fffdf8"
-                self.canvas.create_rectangle(x, y, x + CELL, y + CELL, fill=color, outline="#d6d5cd")
+                color = "#294c40" if cell in CAMP_P1 else "#503c38" if cell in CAMP_P2 else ("#263639" if (r + c) % 2 == 0 else "#213033")
+                self.canvas.create_rectangle(x, y, x + CELL, y + CELL, fill=color, outline=PANEL, width=2)
                 if cell == self.selected:
                     self.canvas.create_rectangle(x + 2, y + 2, x + CELL - 2, y + CELL - 2,
-                                                 outline="#237b68", width=3)
+                                                 outline="#f5df99", width=3)
                 if piece:
-                    self.canvas.create_oval(x + 8, y + 8, x + CELL - 8, y + CELL - 8,
-                                            fill="#28759b" if piece == 1 else "#c77629", outline="")
+                    self.canvas.create_oval(x + 8, y + 11, x + CELL - 6, y + CELL - 5,
+                                            fill="#10191b", outline="")
+                    self.canvas.create_oval(x + 7, y + 6, x + CELL - 7, y + CELL - 8,
+                                            fill=MINT if piece == 1 else CORAL,
+                                            outline="#c6f5d9" if piece == 1 else "#ffccbd", width=2)
                     self.canvas.create_text(x + CELL / 2, y + CELL / 2, text=str(piece),
-                                            fill="white", font=("Segoe UI", 12, "bold"))
+                                            fill=BG, font=("Segoe UI", 12, "bold"))
                 elif cell in destinations:
-                    self.canvas.create_oval(x + 19, y + 19, x + 33, y + 33, fill="#237b68", outline="")
+                    self.canvas.create_oval(x + CELL / 2 - 6, y + CELL / 2 - 6,
+                                            x + CELL / 2 + 6, y + CELL / 2 + 6,
+                                            fill="#f5df99", outline="")
         self.status.set(f"Turno del jugador {self.game.state.turn} · {self.game.turns} jugadas")
 
     def on_click(self, event):
@@ -126,10 +188,10 @@ class HoppersApp:
             self.play((self.selected, cell))
         elif self.game.state.board[r][c] == self.game.state.turn:
             self.selected = cell
-            self.detail.set(f"Ficha {cell}: los puntos verdes son destinos legales, incluidos saltos múltiples.")
+            self.detail.set(f"Ficha {cell}: los puntos dorados son destinos legales, incluidos saltos múltiples.")
             self.draw()
         else:
-            self.detail.set("Selecciona una ficha de tu color o uno de sus destinos verdes.")
+            self.detail.set("Selecciona una ficha de tu color o uno de sus destinos dorados.")
 
     def play(self, action):
         self.game.play(action)
