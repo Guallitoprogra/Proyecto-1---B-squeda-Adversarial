@@ -17,6 +17,7 @@ def show_board(state):
 
 
 def parse_action(text):
+    # La consola pide cuatro números; el motor recibe dos pares de coordenadas.
     try:
         r, c, nr, nc = map(int, text.split())
     except ValueError:
@@ -35,6 +36,7 @@ def main(mode="humano-humano", depth=3, seconds=2.0, human=1, max_turns=600):
         legal = actions(state)
         agent_turn = mode == "agente-agente" or (mode == "humano-agente" and state.turn != human)
         if agent_turn:
+            # Ambos modos usan el mismo motor: solo cambia quién elige la acción.
             stats = SearchStats()
             action = choose_action(state, depth, seconds, stats=stats, history=game.history)
             game.play(action)
@@ -63,6 +65,7 @@ def main(mode="humano-humano", depth=3, seconds=2.0, human=1, max_turns=600):
 
 
 if __name__ == "__main__":
+    # Estos argumentos permiten elegir el modo sin editar el código.
     parser = argparse.ArgumentParser(description="Jugar Hoppers por consola")
     parser.add_argument("--mode", choices=["humano-humano", "humano-agente", "agente-agente"],
                         default="humano-agente")

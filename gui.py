@@ -22,6 +22,7 @@ MODES = ("Humano contra agente", "Agente contra agente", "Humano contra humano")
 
 
 class HoppersApp:
+    # La ventana coordina los clics y el agente; las reglas siguen en el motor.
     def __init__(self, root):
         self.root = root
         root.title("Hoppers | Juego de estrategia")
@@ -31,6 +32,7 @@ class HoppersApp:
         self.selected = None
         self.busy = False
         self.finished = False
+        # Identifica la partida para no aplicar respuestas que lleguen después de reiniciar.
         self.generation = 0
         self.cancel = threading.Event()
         self.messages = queue.Queue()
@@ -41,6 +43,7 @@ class HoppersApp:
         self.status = tk.StringVar()
         self.detail = tk.StringVar(value="Selecciona una ficha menta y luego un destino marcado.")
         self.summary = tk.StringVar(value="Todavía no hay jugadas del agente.")
+        # Editar un control no cambia la partida actual hasta pulsar Nueva partida.
         self.active_settings = (MODES[0], 3, 2.0, 1)
 
         style = ttk.Style(root)
@@ -131,6 +134,7 @@ class HoppersApp:
         except ValueError:
             self.detail.set("Usa profundidad positiva y un tiempo mayor que 0 y hasta 30 segundos.")
             return
+        # Avisamos al hilo anterior y creamos una señal independiente para la nueva partida.
         self.cancel.set()
         self.cancel = threading.Event()
         self.generation += 1
@@ -149,6 +153,7 @@ class HoppersApp:
 
     def draw(self):
         self.canvas.delete("all")
+        # Los puntos se obtienen de las reglas, no de cálculos separados de la interfaz.
         destinations = {end for start, end in actions(self.game.state) if start == self.selected}
         for i in range(10):
             center = MARGIN + i * CELL + CELL / 2
@@ -178,8 +183,10 @@ class HoppersApp:
         self.status.set(f"Turno del jugador {self.game.state.turn} · {self.game.turns} jugadas")
 
     def on_click(self, event):
+        # Evitamos mover mientras se calcula la respuesta o después del final.
         if self.busy or self.finished or self.is_agent_turn():
             return
+        # El mouse da píxeles. Restamos el margen y convertimos a fila y columna.
         r, c = (event.y - MARGIN) // CELL, (event.x - MARGIN) // CELL
         if not (0 <= r < 10 and 0 <= c < 10):
             return
@@ -212,6 +219,7 @@ class HoppersApp:
         self.busy = True
         self.status.set(f"El agente {self.game.state.turn} está pensando…")
         _, depth, seconds, _ = self.active_settings
+        # El hilo recibe su propia copia del historial; el estado ya es inmutable.
         state, history = self.game.state, self.game.history.copy()
         generation, cancel = self.generation, self.cancel
 
@@ -227,10 +235,12 @@ class HoppersApp:
         threading.Thread(target=work, daemon=True).start()
 
     def poll(self):
+        # Recogemos respuestas sin bloquear. Solo este hilo actualiza los controles de Tkinter.
         try:
             while True:
                 generation, action, stats, error = self.messages.get_nowait()
                 if generation != self.generation:
+                    # La respuesta pertenece a una partida que ya fue reemplazada.
                     continue
                 self.busy = False
                 if error or action is None:

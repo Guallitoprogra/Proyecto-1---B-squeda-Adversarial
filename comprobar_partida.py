@@ -8,6 +8,7 @@ from game import Game
 
 
 def run(depth, seconds, max_turns):
+    # Los dos jugadores usan el agente. La sesión se encarga de victoria y tablas.
     game = Game(max_turns=max_turns)
     started = perf_counter()
     slowest = 0
@@ -15,6 +16,7 @@ def run(depth, seconds, max_turns):
         stats = SearchStats()
         move = choose_action(game.state, depth, seconds, stats=stats, history=game.history)
         game.play(move)  # También valida cada acción que entrega el agente.
+        # Interesa la decisión más lenta para comprobar el presupuesto por jugada.
         slowest = max(slowest, stats.elapsed)
     print(game.outcome())
     print(f"Jugadas: {game.turns}")

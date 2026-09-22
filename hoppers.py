@@ -7,12 +7,14 @@ SIZE = 10
 EMPTY = 0
 P1 = 1
 P2 = 2
+# Combinamos cambios de fila y columna; (0, 0) no mueve la ficha.
 DIRECTIONS = tuple(
     (dr, dc)
     for dr in (-1, 0, 1)
     for dc in (-1, 0, 1)
     if (dr, dc) != (0, 0)
 )
+# La suma forma el triángulo de 15 casillas. El otro campamento es su reflejo.
 CAMP_P1 = frozenset((r, c) for r in range(SIZE) for c in range(SIZE) if r + c <= 4)
 CAMP_P2 = frozenset((9 - r, 9 - c) for r, c in CAMP_P1)
 
@@ -22,6 +24,7 @@ Action = tuple[Position, Position]
 
 @dataclass(frozen=True)
 class State:
+    # Un estado es una posición, no toda la partida. Las tuplas evitan cambios internos.
     board: tuple[tuple[int, ...], ...]
     turn: int = P1
 
@@ -47,6 +50,7 @@ def jump_destinations(board, origin):
     """Busca todos los destinos alcanzables en una sola cadena de saltos."""
     visited = {origin}
     pending = [origin]
+    # Cada aterrizaje puede iniciar otro salto. Visitados evita volver a recorrer ciclos.
     while pending:
         r, c = pending.pop()
         for dr, dc in DIRECTIONS:
@@ -59,6 +63,7 @@ def jump_destinations(board, origin):
             # La ficha que se mueve ya no está en su casilla de origen.
             occupied = middle != origin and board[mr][mc] != EMPTY
             if occupied and board[lr][lc] == EMPTY:
+                # Guardamos también los destinos intermedios: seguir saltando es opcional.
                 visited.add(landing)
                 pending.append(landing)
     visited.remove(origin)
@@ -86,6 +91,7 @@ def actions(state):
 
 
 def result(state, action):
+    # La entrada del jugador pasa por aquí; no se acepta mover una ficha ajena.
     if action not in actions(state):
         raise ValueError("La jugada no es legal para el jugador en turno.")
     return apply_action(state, action)
@@ -102,6 +108,7 @@ def apply_action(state, action):
 
 
 def winner(state):
+    # Llegar con una ficha no basta: hay que llenar las 15 casillas con el mismo jugador.
     if all(state.board[r][c] == P1 for r, c in CAMP_P2):
         return P1
     if all(state.board[r][c] == P2 for r, c in CAMP_P1):
